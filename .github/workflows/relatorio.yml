@@ -41,21 +41,30 @@ jobs:
             do
               REPORT_CONTENT+="- ${FILE}\n"
             done
+
+            # Detalhes do autor e data do commit
+            AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
+            DATE=$(git log -1 --pretty=format:"%ad" $COMMIT)
+            REPORT_CONTENT+="Alterado por: ${AUTHOR}\n"
+            REPORT_CONTENT+="Data: ${DATE}\n"
+
             REPORT_CONTENT+="------------------------------------------------------------\n"
           done
 
-          echo "${REPORT_CONTENT}" > report_content.txt
+          echo "$REPORT_CONTENT" > report_content.txt
 
       - name: Criar página no Confluence
         env:
           CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
           CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
-          REPORT_CONTENT: $(cat report_content.txt)
         run: |
           PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }}"
           CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
           SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
           
+          # Ler o conteúdo do relatório gerado
+          REPORT_CONTENT=$(cat report_content.txt)
+
           # Criar uma nova página no Confluence para o PR
           curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
