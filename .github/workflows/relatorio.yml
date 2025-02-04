@@ -52,7 +52,7 @@ jobs:
 
             # Detalhes do autor e data do commit
             AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
-            DATE=$(git log -1 --pretty=format:"%ad" $COMMIT)
+            DATE=$(git log -1 --date=format:'%d/%m/%Y %H:%M:%S' --pretty=format:"%ad" $COMMIT)  # Formato brasileiro
             REPORT_CONTENT+="Alterado por: ${AUTHOR}\n"
             REPORT_CONTENT+="Data: ${DATE}\n"
 
