@@ -37,10 +37,15 @@ jobs:
 
             # Lista os arquivos modificados nesse commit
             FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
-            for FILE in $FILES
-            do
-              REPORT_CONTENT+="- ${FILE}\n"
-            done
+            if [ -n "$FILES" ]; then
+              REPORT_CONTENT+="Arquivos modificados:\n"
+              for FILE in $FILES
+              do
+                REPORT_CONTENT+="- ${FILE}\n"
+              done
+            else
+              REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
+            fi
 
             # Detalhes do autor e data do commit
             AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
