@@ -3,6 +3,8 @@ name: Relatório de Commits
 on:
   pull_request:
     types: [closed]
+    branches:
+     -master
 
 jobs:
   commit_report:
@@ -103,11 +105,11 @@ jobs:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = ${{ github.event.pull_request.number }};
-            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/folder/65784";  // Link fixo para a pasta do Confluence
+            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages";  // Link fixo para a página do Confluence
             const commentBody = `
               ### 📝 Relatório de Commits
 
-              Você pode acessar o relatório de commits detalhado na pasta do Confluence [aqui](${confluenceFolderUrl}).
+              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluenceFolderUrl}).
             `;
             await github.rest.issues.createComment({
               ...context.repo,
