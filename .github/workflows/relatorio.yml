@@ -98,7 +98,9 @@ jobs:
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
           # Extrair o link da página criada no Confluence da resposta
-          PAGE_URL=$(echo "$response" | jq -r '.url')
+          PAGE_URL=$(echo "$response" | jq -r '.results[0]._links.webui')
+
+          echo "::set-output name=page_url::$PAGE_URL"  # Definir o link da página como output
 
       - name: Comentar na PR com o link da página no Confluence
         uses: actions/github-script@v6
