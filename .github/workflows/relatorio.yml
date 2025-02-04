@@ -61,11 +61,12 @@ jobs:
           PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }}"
           CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
           SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
+          PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
           
           # Ler o conteúdo do relatório gerado
           REPORT_CONTENT=$(cat report_content.txt)
 
-          # Criar uma nova página no Confluence para o PR
+          # Criar uma nova página no Confluence para o PR na pasta específica
           curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
             -H "Content-Type: application/json" \
@@ -75,6 +76,11 @@ jobs:
               "space": {
                 "key": "'"$SPACE_KEY"'"
               },
+              "ancestors": [
+                {
+                  "id": "'"$PARENT_PAGE_ID"'"
+                }
+              ],
               "body": {
                 "storage": {
                   "value": "'"${REPORT_CONTENT}"'",
