@@ -23,8 +23,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}  # Branch de origem da PR
           PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}  # Branch de destino da PR
+          REPO_NAME: ${{ github.repository }}  # Nome do repositório no formato owner/repo
         run: |
-          REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER}\n"
+          REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n"
           REPORT_CONTENT+="Esta PR foi feita da branch '${PR_HEAD_BRANCH}' para a branch '${PR_BASE_BRANCH}'.\n"
           REPORT_CONTENT+="Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.\n"
           REPORT_CONTENT+="------------------------------------------------------------\n"
@@ -66,7 +67,7 @@ jobs:
           CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
           CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
         run: |
-          PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }}"
+          PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }} no repositório '${{ github.repository }}'"
           CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
           SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
           PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
