@@ -75,7 +75,7 @@ jobs:
           REPORT_CONTENT=$(cat report_content.txt)
 
           # Criar uma nova página no Confluence para o PR na pasta específica
-          curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
+          response=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
@@ -95,4 +95,25 @@ jobs:
                   "representation": "storage"
                 }
               }
-            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
+            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
+
+          # Extrair o link da página criada no Confluence da resposta
+          PAGE_URL=$(echo "$response" | jq -r '.url')
+
+      - name: Comentar na PR com o link da página no Confluence
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const prNumber = ${{ github.event.pull_request.number }};
+            const pageUrl = "${{ steps.create_confluence_page.outputs.page_url }}"; // Link da página do Confluence
+            const commentBody = `
+              ### 📝 Relatório de Commits
+
+              Você pode acessar o relatório de commits detalhado da PR [aqui](${pageUrl}).
+            `;
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: prNumber,
+              body: commentBody,
+            });
