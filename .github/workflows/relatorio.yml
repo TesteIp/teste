@@ -21,8 +21,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}  # Branch de origem da PR
+          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}  # Branch de destino da PR
         run: |
           REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER}\n"
+          REPORT_CONTENT+="Esta PR foi feita da branch '${PR_HEAD_BRANCH}' para a branch '${PR_BASE_BRANCH}'.\n"
           REPORT_CONTENT+="Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.\n"
           REPORT_CONTENT+="------------------------------------------------------------\n"
           REPORT_CONTENT+="Commits neste PR:\n"
@@ -88,7 +91,7 @@ jobs:
               ],
               "body": {
                 "storage": {
-                  "value": "'"${REPORT_CONTENT}"'",
+                  "value": "'"${REPORT_CONTENT}"' ",
                   "representation": "storage"
                 }
               }
