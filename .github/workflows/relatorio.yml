@@ -97,23 +97,17 @@ jobs:
               }
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
-          # Extrair o link da página criada no Confluence
-          PAGE_URL="https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/folder/65784"
-
-          # Armazenar o link da página do Confluence para uso posterior
-          echo "::set-output name=page_url::$PAGE_URL"  # Definir o link da página como output
-
-      - name: Comentar na PR com o link da pasta do Confluence
+      - name: Comentar na PR com o link fixo da pasta do Confluence
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = ${{ github.event.pull_request.number }};
-            const pageUrl = "${{ steps.create_confluence_page.outputs.page_url }}"; // Link para a pasta do Confluence
+            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/folder/65784";  // Link fixo para a pasta do Confluence
             const commentBody = `
               ### 📝 Relatório de Commits
 
-              Você pode acessar o relatório de commits detalhado na pasta do Confluence [aqui](${pageUrl}).
+              Você pode acessar o relatório de commits detalhado na pasta do Confluence [aqui](${confluenceFolderUrl}).
             `;
             await github.rest.issues.createComment({
               ...context.repo,
