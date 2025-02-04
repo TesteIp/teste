@@ -77,7 +77,7 @@ jobs:
           REPORT_CONTENT=$(cat report_content.txt)
 
           # Criar uma nova página no Confluence para o PR na pasta específica
-          curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
+          RESPONSE=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
@@ -97,4 +97,6 @@ jobs:
                   "representation": "storage"
                 }
               }
-            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
+            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
+          
+          echo "Resposta da API do Confluence: $RESPONSE"
