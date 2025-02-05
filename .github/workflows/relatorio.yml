@@ -23,69 +23,66 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO_NAME: ${{ github.repository }}
         run: |
-          REPORT_CONTENT="## Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n\n"
-          REPORT_CONTENT+="**Branch de origem:** \`${{ github.event.pull_request.head.ref }}\`\n"
-          REPORT_CONTENT+="**Branch de destino:** \`${{ github.event.pull_request.base.ref }}\`\n"
-          REPORT_CONTENT+="------------------------------------------------------------\n\n"
-
-          # Loop para adicionar os commits e arquivos modificados
-          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --pretty=format:"%H")
+          REPORT_CONTENT="### Relatório de Commits da PR #${PR_NUMBER}\n"
+          REPORT_CONTENT+="Repositório: ${REPO_NAME}\n"
+          REPORT_CONTENT+="Branch de origem: ${{ github.event.pull_request.head.ref }}\n"
+          REPORT_CONTENT+="Branch de destino: ${{ github.event.pull_request.base.ref }}\n"
+          REPORT_CONTENT+="------------------------------------------------------------\n"
+          
+          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"%H")
           for COMMIT in $COMMITS
           do
-            COMMIT_DESC=$(git log -1 --pretty=format:"%h - %s" $COMMIT)
+            COMMIT_DESC=$(git log --oneline -n 1 $COMMIT)
             AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
-            DATE=$(git log -1 --pretty=format:"%d/%m/%Y %H:%M:%S" $COMMIT)
-
-            REPORT_CONTENT+="### Commit: ${COMMIT_DESC}\n"
-            REPORT_CONTENT+="**Autor:** ${AUTHOR}\n"
-            REPORT_CONTENT+="**Data:** ${DATE}\n"
-            REPORT_CONTENT+="\n**Arquivos modificados e suas alterações:**\n"
-
+            DATE=$(git log -1 --pretty=format:"%d/%m/%Y %H:%M:%S" --date=local $COMMIT)
+            REPORT_CONTENT+="\n**Commit:** ${COMMIT_DESC}\n**Autor:** ${AUTHOR}\n**Data:** ${DATE}\n"
+            
+            REPORT_CONTENT+="**Arquivos modificados:**\n"
             FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
             for FILE in $FILES
             do
-              REPORT_CONTENT+="\n#### Arquivo: ${FILE}\n"
-              DIFF=$(git diff $COMMIT^ $COMMIT -- $FILE | sed 's/"/\\"/g')  # Pegando o diff do arquivo
-              REPORT_CONTENT+="\n\`\`\`diff\n${DIFF}\n\`\`\`\n"
+              REPORT_CONTENT+="- ${FILE}\n"
+              REPORT_CONTENT+="\n\`\`\`diff\n$(git diff $COMMIT~1 $COMMIT -- ${FILE})\n\`\`\`\n"
             done
-
-            REPORT_CONTENT+="\n------------------------------------------------------------\n"
+            REPORT_CONTENT+="------------------------------------------------------------\n"
           done
-
-          echo -e "$REPORT_CONTENT" > report_content.txt
+          echo "$REPORT_CONTENT" > report_content.txt
 
       - name: Criar página no Confluence
         env:
-          CONFLUENCE_USER: ${{ secrets.email }}  
-          CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  
+          CONFLUENCE_USER: ${{ secrets.email }}
+          CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}
         run: |
-          PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }} no repositório '${{ github.repository }}'"
+          PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }}"
           CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
-          SPACE_KEY="DDS"  
-          PARENT_PAGE_ID="65784"  
-
-          # Ler o conteúdo do relatório gerado
-          REPORT_CONTENT=$(cat report_content.txt)
-
-          # Criar uma nova página no Confluence para o PR
-          curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
+          SPACE_KEY="DDS"
+          PARENT_PAGE_ID="65784"
+          REPORT_CONTENT=$(cat report_content.txt | jq -Rs .)
+          
+          RESPONSE=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
               "type": "page",
               "title": "'"$PAGE_TITLE"'",
-              "space": {
-                "key": "'"$SPACE_KEY"'"
-              },
-              "ancestors": [
-                {
-                  "id": "'"$PARENT_PAGE_ID"'"
-                }
-              ],
-              "body": {
-                "storage": {
-                  "value": "'"${REPORT_CONTENT}"'",
-                  "representation": "wiki"
-                }
-              }
-            }' "$CONFLUENCE_URL"
+              "space": {"key": "'"$SPACE_KEY"'"},
+              "ancestors": [{"id": "'"$PARENT_PAGE_ID"'"}],
+              "body": {"storage": {"value": '"$REPORT_CONTENT"', "representation": "wiki"}}
+            }' "$CONFLUENCE_URL" --silent --write-out "\n%{http_code}")
+          
+          PAGE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+          if [ -z "$PAGE_ID" ]; then echo "Erro ao criar página no Confluence"; exit 1; fi
+          echo "PAGE_ID=$PAGE_ID" >> $GITHUB_ENV
+
+      - name: Comentar na PR com link para Confluence
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          CONFLUENCE_PAGE_URL="https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages/${PAGE_ID}"
+          COMMENT_BODY="### Relatório de Commits da PR #${PR_NUMBER}\n\n[📄 Acesse o relatório no Confluence](${CONFLUENCE_PAGE_URL})"
+          
+          curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments \
+            -d "{\"body\": \"$COMMENT_BODY\"}"
