@@ -46,6 +46,9 @@ jobs:
               for FILE in $FILES
               do
                 REPORT_CONTENT+="- ${FILE}\n"
+                # Adiciona as diferenças do arquivo
+                DIFF=$(git diff $COMMIT^ $COMMIT -- $FILE)
+                REPORT_CONTENT+="\`\`\`diff\n${DIFF}\n\`\`\`\n"
               done
             else
               REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
