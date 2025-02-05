@@ -16,52 +16,100 @@ jobs:
       - name: Fetch all commits
         run: git fetch --prune --unshallow
 
-      - name: Gerar relatório de commits em TXT
+      - name: Gerar conteúdo do relatório de commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}  # Branch de origem da PR
+          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}  # Branch de destino da PR
+          REPO_NAME: ${{ github.repository }}  # Nome do repositório no formato owner/repo
         run: |
-          REPORT_PATH="commit_report.txt"
+          REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n"
+          REPORT_CONTENT+="Esta PR foi feita da branch '${PR_HEAD_BRANCH}' para a branch '${PR_BASE_BRANCH}'.\n"
+          REPORT_CONTENT+="Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.\n"
+          REPORT_CONTENT+="------------------------------------------------------------\n"
+          REPORT_CONTENT+="Commits neste PR:\n"
+          
+          # Loop para adicionar os commits e arquivos modificados
+          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"%h")
+          for COMMIT in $COMMITS
+          do
+            # Adiciona a descrição do commit
+            COMMIT_DESC=$(git log --oneline -n 1 $COMMIT)
+            REPORT_CONTENT+="Commit: ${COMMIT_DESC}\n"
 
-          {
-            echo "Relatório de Commits da PR #${PR_NUMBER}";
-            echo "Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.";
-            echo "------------------------------------------------------------";
-            echo "Commits neste PR:";
-            git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"Commit [%h] - Autor: %an, Data: %ar, Mensagem: %s";
-            echo "------------------------------------------------------------";
-          } > $REPORT_PATH
+            # Lista os arquivos modificados nesse commit
+            FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
+            if [ -n "$FILES" ]; then
+              REPORT_CONTENT+="Arquivos modificados:\n"
+              for FILE in $FILES
+              do
+                REPORT_CONTENT+="- ${FILE}\n"
+              done
+            else
+              REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
+            fi
 
-          echo "Relatório de Commits da PR #${PR_NUMBER}" > $REPORT_PATH
-          echo "Este relatório contém todos os commits associados ao PR #${PR_NUMBER}." >> $REPORT_PATH
-          echo "------------------------------------------------------------" >> $REPORT_PATH
+            # Detalhes do autor e data do commit
+            AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
+            DATE=$(git log -1 --date=format:'%d/%m/%Y %H:%M:%S' --pretty=format:"%ad" $COMMIT)  # Formato brasileiro
+            REPORT_CONTENT+="Alterado por: ${AUTHOR}\n"
+            REPORT_CONTENT+="Data: ${DATE}\n"
 
-          echo "Commits neste PR:" >> $REPORT_PATH
-          git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"Commit [%h] - Autor: %an, Data: %ar, Mensagem: %s" >> $REPORT_PATH
-          echo "------------------------------------------------------------" >> $REPORT_PATH
+            REPORT_CONTENT+="------------------------------------------------------------\n"
+          done
 
+          echo "$REPORT_CONTENT" > report_content.txt
 
-      - name: Upload TXT commit report as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: commit-report-txt
-          path: commit_report.txt
-
-      - name: Publicar comentário com link de download
-        uses: actions/github-script@v6
+      - name: Criar página no Confluence
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
+          CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
+        run: |
+          PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }} no repositório '${{ github.repository }}'"
+          CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
+          SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
+          PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
+          
+          # Ler o conteúdo do relatório gerado
+          REPORT_CONTENT=$(cat report_content.txt)
+
+          # Criar uma nova página no Confluence para o PR na pasta específica
+          response=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            --data '{
+              "type": "page",
+              "title": "'"$PAGE_TITLE"'",
+              "space": {
+                "key": "'"$SPACE_KEY"'"
+              },
+              "ancestors": [
+                {
+                  "id": "'"$PARENT_PAGE_ID"'"
+                }
+              ],
+              "body": {
+                "storage": {
+                  "value": "'"${REPORT_CONTENT}"' ",
+                  "representation": "storage"
+                }
+              }
+            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
+
+      - name: Comentar na PR com o link fixo da pasta do Confluence
+        if: github.event.pull_request.base.ref == 'master'  # Garante que só será feito para PRs para 'master'
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = ${{ github.event.pull_request.number }};
-            const repoUrl = `https://github.com/${{ github.repository }}`;
-            const artifactUrl = `${repoUrl}/actions/runs/${{ github.run_id }}`;
+            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages";  // Link fixo para a página do Confluence
             const commentBody = `
-              ### 📄 Relatório de Commits da PR #${prNumber}
+              ### 📝 Relatório de Commits
 
-              Você pode baixar o relatório detalhado em TXT [aqui](${artifactUrl}).
+              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluenceFolderUrl}).
             `;
             await github.rest.issues.createComment({
               ...context.repo,
