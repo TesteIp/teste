@@ -64,6 +64,7 @@ jobs:
           done
 
           echo "$REPORT_CONTENT" > report_content.txt
+          cat report_content.txt
           echo "Relatório de commits gerado com sucesso."
 
       - name: Criar página no Confluence
@@ -101,7 +102,7 @@ jobs:
                   "representation": "storage"
                 }
               }
-            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
+            }' "$CONFLUENCE_URL")
 
           # Verificar a resposta do API
           echo "Resposta do API do Confluence: $response"
@@ -109,6 +110,10 @@ jobs:
 
           # Extrair o ID da página criada a partir da resposta
           PAGE_ID=$(echo $response | jq -r '.id')
+          if [ "$PAGE_ID" == "null" ]; then
+            echo "Erro ao criar a página no Confluence."
+            exit 1
+          fi
           # Salvar a URL da nova página como uma saída do passo
           echo "::set-output name=page_url::https://joaovictorcaoki.atlassian.net/wiki/spaces/${SPACE_KEY}/pages/${PAGE_ID}"
 
