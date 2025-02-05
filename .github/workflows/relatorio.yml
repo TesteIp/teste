@@ -21,62 +21,54 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}  # Branch de origem da PR
-          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}  # Branch de destino da PR
-          REPO_NAME: ${{ github.repository }}  # Nome do repositório no formato owner/repo
+          REPO_NAME: ${{ github.repository }}
         run: |
-          REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n"
-          REPORT_CONTENT+="Esta PR foi feita da branch '${PR_HEAD_BRANCH}' para a branch '${PR_BASE_BRANCH}'.\n"
-          REPORT_CONTENT+="Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.\n"
-          REPORT_CONTENT+="------------------------------------------------------------\n"
-          REPORT_CONTENT+="Commits neste PR:\n"
-          
+          REPORT_CONTENT="## Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n\n"
+          REPORT_CONTENT+="**Branch de origem:** \`${{ github.event.pull_request.head.ref }}\`\n"
+          REPORT_CONTENT+="**Branch de destino:** \`${{ github.event.pull_request.base.ref }}\`\n"
+          REPORT_CONTENT+="------------------------------------------------------------\n\n"
+
           # Loop para adicionar os commits e arquivos modificados
-          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"%h")
+          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --pretty=format:"%H")
           for COMMIT in $COMMITS
           do
-            # Adiciona a descrição do commit
-            COMMIT_DESC=$(git log --oneline -n 1 $COMMIT)
-            REPORT_CONTENT+="Commit: ${COMMIT_DESC}\n"
-
-            # Lista os arquivos modificados nesse commit
-            FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
-            if [ -n "$FILES" ]; then
-              REPORT_CONTENT+="Arquivos modificados:\n"
-              for FILE in $FILES
-              do
-                REPORT_CONTENT+="- ${FILE}\n"
-              done
-            else
-              REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
-            fi
-
-            # Detalhes do autor e data do commit
+            COMMIT_DESC=$(git log -1 --pretty=format:"%h - %s" $COMMIT)
             AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
-            DATE=$(git log -1 --date=format:'%d/%m/%Y %H:%M:%S' --pretty=format:"%ad" $COMMIT)  # Formato brasileiro
-            REPORT_CONTENT+="Alterado por: ${AUTHOR}\n"
-            REPORT_CONTENT+="Data: ${DATE}\n"
+            DATE=$(git log -1 --pretty=format:"%d/%m/%Y %H:%M:%S" $COMMIT)
 
-            REPORT_CONTENT+="------------------------------------------------------------\n"
+            REPORT_CONTENT+="### Commit: ${COMMIT_DESC}\n"
+            REPORT_CONTENT+="**Autor:** ${AUTHOR}\n"
+            REPORT_CONTENT+="**Data:** ${DATE}\n"
+            REPORT_CONTENT+="\n**Arquivos modificados e suas alterações:**\n"
+
+            FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
+            for FILE in $FILES
+            do
+              REPORT_CONTENT+="\n#### Arquivo: ${FILE}\n"
+              DIFF=$(git diff $COMMIT^ $COMMIT -- $FILE | sed 's/"/\\"/g')  # Pegando o diff do arquivo
+              REPORT_CONTENT+="\n\`\`\`diff\n${DIFF}\n\`\`\`\n"
+            done
+
+            REPORT_CONTENT+="\n------------------------------------------------------------\n"
           done
 
-          echo "$REPORT_CONTENT" > report_content.txt
+          echo -e "$REPORT_CONTENT" > report_content.txt
 
       - name: Criar página no Confluence
         env:
-          CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
-          CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
+          CONFLUENCE_USER: ${{ secrets.email }}  
+          CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  
         run: |
           PAGE_TITLE="Relatório de Commits da PR #${{ github.event.pull_request.number }} no repositório '${{ github.repository }}'"
           CONFLUENCE_URL="https://joaovictorcaoki.atlassian.net/wiki/rest/api/content"
-          SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
-          PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
-          
+          SPACE_KEY="DDS"  
+          PARENT_PAGE_ID="65784"  
+
           # Ler o conteúdo do relatório gerado
           REPORT_CONTENT=$(cat report_content.txt)
 
-          # Criar uma nova página no Confluence para o PR na pasta específica
-          response=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
+          # Criar uma nova página no Confluence para o PR
+          curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
             -X POST \
             -H "Content-Type: application/json" \
             --data '{
@@ -92,27 +84,8 @@ jobs:
               ],
               "body": {
                 "storage": {
-                  "value": "'"${REPORT_CONTENT}"' ",
-                  "representation": "storage"
+                  "value": "'"${REPORT_CONTENT}"'",
+                  "representation": "wiki"
                 }
               }
-            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
-
-      - name: Comentar na PR com o link fixo da pasta do Confluence
-        if: github.event.pull_request.base.ref == 'master'  # Garante que só será feito para PRs para 'master'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.PAT_TOKEN }}
-          script: |
-            const prNumber = ${{ github.event.pull_request.number }};
-            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages";  // Link fixo para a página do Confluence
-            const commentBody = `
-              ### 📝 Relatório de Commits
-
-              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluenceFolderUrl}).
-            `;
-            await github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: prNumber,
-              body: commentBody,
-            });
+            }' "$CONFLUENCE_URL"
