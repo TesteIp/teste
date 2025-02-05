@@ -103,6 +103,8 @@ jobs:
               }
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
+          echo "Response from Confluence: $response"
+
       - name: Comentar na PR com o link fixo da pasta do Confluence
         if: github.event.pull_request.base.ref == 'master'  # Garante que só será feito para PRs para 'master'
         uses: actions/github-script@v6
