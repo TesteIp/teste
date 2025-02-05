@@ -64,6 +64,7 @@ jobs:
           done
 
           echo "$REPORT_CONTENT" > report_content.txt
+          echo "Relatório de commits gerado com sucesso."
 
       - name: Criar página no Confluence
         id: create_confluence_page  # Adicionado um ID para capturar a saída
@@ -101,6 +102,10 @@ jobs:
                 }
               }
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
+
+          # Verificar a resposta do API
+          echo "Resposta do API do Confluence: $response"
+          echo "$response" | jq '.'
 
           # Extrair o ID da página criada a partir da resposta
           PAGE_ID=$(echo $response | jq -r '.id')
