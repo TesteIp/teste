@@ -67,6 +67,12 @@ jobs:
           cat report_content.txt
           echo "Relatório de commits gerado com sucesso."
 
+      - name: Escapar caracteres especiais do relatório
+        id: escape_report
+        run: |
+          ESCAPED_REPORT_CONTENT=$(jq -sRr @json < report_content.txt)
+          echo "::set-output name=escaped_report_content::$ESCAPED_REPORT_CONTENT"
+
       - name: Criar página no Confluence
         id: create_confluence_page  # Adicionado um ID para capturar a saída
         env:
@@ -78,8 +84,8 @@ jobs:
           SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
           PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
           
-          # Ler o conteúdo do relatório gerado
-          REPORT_CONTENT=$(cat report_content.txt)
+          # Ler o conteúdo do relatório gerado e escapado
+          ESCAPED_REPORT_CONTENT="${{ steps.escape_report.outputs.escaped_report_content }}"
 
           # Criar uma nova página no Confluence para o PR na pasta específica
           response=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
@@ -98,7 +104,7 @@ jobs:
               ],
               "body": {
                 "storage": {
-                  "value": "'"${REPORT_CONTENT}"' ",
+                  "value": '"$ESCAPED_REPORT_CONTENT"',
                   "representation": "storage"
                 }
               }
