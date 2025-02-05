@@ -46,9 +46,6 @@ jobs:
               for FILE in $FILES
               do
                 REPORT_CONTENT+="- ${FILE}\n"
-                # Adiciona as diferenças do arquivo
-                DIFF=$(git diff $COMMIT^ $COMMIT -- $FILE)
-                REPORT_CONTENT+="\`\`\`diff\n${DIFF}\n\`\`\`\n"
               done
             else
               REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
@@ -64,14 +61,6 @@ jobs:
           done
 
           echo "$REPORT_CONTENT" > report_content.txt
-          cat report_content.txt
-          echo "Relatório de commits gerado com sucesso."
-
-      - name: Escapar caracteres especiais do relatório
-        id: escape_report
-        run: |
-          ESCAPED_REPORT_CONTENT=$(jq -sRr @json < report_content.txt)
-          echo "::set-output name=escaped_report_content::$ESCAPED_REPORT_CONTENT"
 
       - name: Criar página no Confluence
         id: create_confluence_page  # Adicionado um ID para capturar a saída
@@ -84,8 +73,8 @@ jobs:
           SPACE_KEY="DDS"  # O espaço Confluence que você deseja usar
           PARENT_PAGE_ID="65784"  # ID da página pai (pasta)
           
-          # Ler o conteúdo do relatório gerado e escapado
-          ESCAPED_REPORT_CONTENT="${{ steps.escape_report.outputs.escaped_report_content }}"
+          # Ler o conteúdo do relatório gerado
+          REPORT_CONTENT=$(cat report_content.txt)
 
           # Criar uma nova página no Confluence para o PR na pasta específica
           response=$(curl -u "${CONFLUENCE_USER}:${CONFLUENCE_API_TOKEN}" \
@@ -104,29 +93,14 @@ jobs:
               ],
               "body": {
                 "storage": {
-                  "value": '"$ESCAPED_REPORT_CONTENT"',
+                  "value": "'"${REPORT_CONTENT}"' ",
                   "representation": "storage"
                 }
               }
-            }' "$CONFLUENCE_URL")
-
-          # Verificar a resposta do API
-          echo "Resposta do API do Confluence: $response"
-          echo "$response" | jq '.'
-
-          # Verificar se houve algum erro na resposta
-          RESPONSE_STATUS=$(echo "$response" | jq -r '.statusCode')
-          if [ "$RESPONSE_STATUS" != "null" ]; then
-            echo "Erro ao criar a página no Confluence: $(echo "$response" | jq -r '.message')"
-            exit 1
-          fi
+            }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
           # Extrair o ID da página criada a partir da resposta
           PAGE_ID=$(echo $response | jq -r '.id')
-          if [ "$PAGE_ID" == "null" ]; then
-            echo "Erro ao criar a página no Confluence. Resposta do servidor: $response"
-            exit 1
-          fi
           # Salvar a URL da nova página como uma saída do passo
           echo "::set-output name=page_url::https://joaovictorcaoki.atlassian.net/wiki/spaces/${SPACE_KEY}/pages/${PAGE_ID}"
 
