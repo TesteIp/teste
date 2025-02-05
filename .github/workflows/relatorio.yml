@@ -1,73 +1,5 @@
-name: Relatório de Commits
-
-on:
-  pull_request:
-    types: [closed]
-
-jobs:
-  commit_report:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-
-      - name: Fetch all commits
-        run: git fetch --prune --unshallow
-
-      - name: Gerar conteúdo do relatório de commits
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}  # Branch de origem da PR
-          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}  # Branch de destino da PR
-          REPO_NAME: ${{ github.repository }}  # Nome do repositório no formato owner/repo
-        run: |
-          REPORT_CONTENT="Relatório de Commits da PR #${PR_NUMBER} no repositório '${REPO_NAME}'\n"
-          REPORT_CONTENT+="Esta PR foi feita da branch '${PR_HEAD_BRANCH}' para a branch '${PR_BASE_BRANCH}'.\n"
-          REPORT_CONTENT+="Este relatório contém todos os commits associados ao PR #${PR_NUMBER}.\n"
-          REPORT_CONTENT+="------------------------------------------------------------\n"
-          REPORT_CONTENT+="Commits neste PR:\n"
-          
-          # Loop para adicionar os commits e arquivos modificados
-          COMMITS=$(git log $BASE_SHA..$HEAD_SHA --oneline --pretty=format:"%h")
-          for COMMIT in $COMMITS
-          do
-            # Adiciona a descrição do commit
-            COMMIT_DESC=$(git log --oneline -n 1 $COMMIT)
-            REPORT_CONTENT+="Commit: ${COMMIT_DESC}\n"
-
-            # Lista os arquivos modificados nesse commit
-            FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT)
-            if [ -n "$FILES" ]; then
-              REPORT_CONTENT+="Arquivos modificados:\n"
-              for FILE in $FILES
-              do
-                REPORT_CONTENT+="- ${FILE}\n"
-                
-                # Adiciona detalhes das modificações
-                DIFF=$(git diff $COMMIT^ $COMMIT -- $FILE)
-                REPORT_CONTENT+="Diferenças:\n"
-                REPORT_CONTENT+="${DIFF}\n"
-              done
-            else
-              REPORT_CONTENT+="Nenhuma modificação no arquivo para este commit.\n"
-            fi
-
-            # Detalhes do autor e data do commit
-            AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT)
-            DATE=$(git log -1 --date=format:'%d/%m/%Y %H:%M:%S' --pretty=format:"%ad" $COMMIT)  # Formato brasileiro
-            REPORT_CONTENT+="Alterado por: ${AUTHOR}\n"
-            REPORT_CONTENT+="Data: ${DATE}\n"
-
-            REPORT_CONTENT+="------------------------------------------------------------\n"
-          done
-
-          echo "$REPORT_CONTENT" > report_content.txt
-
-      - name: Criar página no Confluence
+- name: Criar página no Confluence
+        id: create_confluence_page  # Adicionado um ID para capturar a saída
         env:
           CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
           CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
@@ -103,20 +35,23 @@ jobs:
               }
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
-          echo "Response from Confluence: $response"
+          # Extrair o ID da página criada a partir da resposta
+          PAGE_ID=$(echo $response | jq -r '.id')
+          # Salvar a URL da nova página como uma saída do passo
+          echo "::set-output name=page_url::https://joaovictorcaoki.atlassian.net/wiki/spaces/${SPACE_KEY}/pages/${PAGE_ID}"
 
-      - name: Comentar na PR com o link fixo da pasta do Confluence
+      - name: Comentar na PR com o link da página do Confluence
         if: github.event.pull_request.base.ref == 'master'  # Garante que só será feito para PRs para 'master'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = ${{ github.event.pull_request.number }};
-            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages";  // Link fixo para a página do Confluence
+            const confluencePageUrl = "${{ steps.create_confluence_page.outputs.page_url }}";  // Link da página específica do Confluence
             const commentBody = `
               ### 📝 Relatório de Commits
 
-              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluenceFolderUrl}).
+              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluencePageUrl}).
             `;
             await github.rest.issues.createComment({
               ...context.repo,
