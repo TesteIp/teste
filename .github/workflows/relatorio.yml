@@ -108,10 +108,17 @@ jobs:
           echo "Resposta do API do Confluence: $response"
           echo "$response" | jq '.'
 
+          # Verificar se houve algum erro na resposta
+          RESPONSE_STATUS=$(echo "$response" | jq -r '.statusCode')
+          if [ "$RESPONSE_STATUS" != "null" ]; then
+            echo "Erro ao criar a página no Confluence: $(echo "$response" | jq -r '.message')"
+            exit 1
+          fi
+
           # Extrair o ID da página criada a partir da resposta
           PAGE_ID=$(echo $response | jq -r '.id')
           if [ "$PAGE_ID" == "null" ]; then
-            echo "Erro ao criar a página no Confluence."
+            echo "Erro ao criar a página no Confluence. Resposta do servidor: $response"
             exit 1
           fi
           # Salvar a URL da nova página como uma saída do passo
