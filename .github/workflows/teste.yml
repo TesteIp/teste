@@ -47,5 +47,5 @@ jobs:
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }} \n*Link:* ${PR_URL}"
+            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }} \n*Link:* #${{PR_URL}}"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
