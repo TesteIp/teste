@@ -3,7 +3,7 @@ name: Merge Back Hotfix
 on:
   push:
     branches:
-      - main  # Dispara quando a main recebe um merge
+      - master  # Dispara quando a master recebe um merge
 
 permissions:
   contents: write
@@ -21,14 +21,14 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Criar Pull Request da main para dev
+      - name: Criar Pull Request da master para dev
         id: create_pr
         run: |
           PR_URL=$(gh pr create \
             --base dev \
-            --head main \
+            --head master \
             --title "🔄 Merge back hotfix para dev" \
-            --body "Sincronizando as correções da main para dev.")
+            --body "Sincronizando as correções da master para dev.")
           PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
         env:
