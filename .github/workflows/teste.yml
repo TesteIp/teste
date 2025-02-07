@@ -57,7 +57,6 @@ jobs:
           curl -X POST -H 'Content-type: application/json' --data '{
             "text": "Ocorreu um erro ao tentar mesclar o Pull Request <https://github.com/${{ github.repository }}/pull/$PR_NUMBER|#$PR_NUMBER>."
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-
       - name: Notificar no Slack (Sucesso)
         if: env.PR_NUMBER != ''
         run: |
@@ -78,4 +77,4 @@ jobs:
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
             "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
             "text": "Ocorreu um erro ao tentar mesclar o PR #$PR_NUMBER."
-          }' ${{ secrets.SLACK_WEBHOOK_URL }}
+          }' ${{ secrets.SLACK_WEBHOOK_URL }}        
