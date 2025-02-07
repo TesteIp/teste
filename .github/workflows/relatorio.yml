@@ -63,6 +63,7 @@ jobs:
           echo "$REPORT_CONTENT" > report_content.txt
 
       - name: Criar página no Confluence
+        id: create_confluence_page  # Adicionado um ID para capturar a saída
         env:
           CONFLUENCE_USER: ${{ secrets.email }}  # Token de usuário
           CONFLUENCE_API_TOKEN: ${{ secrets.testecon }}  # Token da API
@@ -98,18 +99,23 @@ jobs:
               }
             }' "https://joaovictorcaoki.atlassian.net/wiki/rest/api/content")
 
-      - name: Comentar na PR com o link fixo da pasta do Confluence
+          # Extrair o ID da página criada a partir da resposta
+          PAGE_ID=$(echo $response | jq -r '.id')
+          # Salvar a URL da nova página como uma saída do passo
+          echo "::set-output name=page_url::https://joaovictorcaoki.atlassian.net/wiki/spaces/${SPACE_KEY}/pages/${PAGE_ID}"
+
+      - name: Comentar na PR com o link da página do Confluence
         if: github.event.pull_request.base.ref == 'master'  # Garante que só será feito para PRs para 'master'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = ${{ github.event.pull_request.number }};
-            const confluenceFolderUrl = "https://joaovictorcaoki.atlassian.net/wiki/spaces/DDS/pages";  // Link fixo para a página do Confluence
+            const confluencePageUrl = "${{ steps.create_confluence_page.outputs.page_url }}";  // Link da página específica do Confluence
             const commentBody = `
               ### 📝 Relatório de Commits
 
-              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluenceFolderUrl}).
+              Você pode acessar o relatório de commits detalhado na página do Confluence [aqui](${confluencePageUrl}).
             `;
             await github.rest.issues.createComment({
               ...context.repo,
