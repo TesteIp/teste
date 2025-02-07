@@ -3,7 +3,7 @@ name: Merge Back Hotfix
 on:
   push:
     branches:
-      - master
+      - master 
 
 permissions:
   contents: write
@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   merge-back:
-    if: ${{ github.event.head_commit.message == 'Merge branch hotfix' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -28,7 +27,7 @@ jobs:
           PR_URL=$(gh pr create \
             --base dev \
             --head master \
-            --title "🔄 Merge back hotfix para dev" \
+            --title " Merge back hotfix para dev" \
             --body "Sincronizando as correções da master para dev.")
           PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
@@ -46,12 +45,12 @@ jobs:
         if: env.PR_NUMBER != ''
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "PR $PR_NUMBER foi mesclado automaticamente com sucesso!"
+            "text": "PR #${{ env.PR_NUMBER }} foi mesclado automaticamente com sucesso!"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Notificar no Slack (Erro)
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
+            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }}"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
