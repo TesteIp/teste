@@ -62,10 +62,8 @@ jobs:
         if: env.PR_NUMBER != ''
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-<<<<<<< HEAD
-=======
             "text": "PR $PR_NUMBER foi mesclado automaticamente com sucesso!"
->>>>>>> origin/master
+            "text": "PR $PR_NUMBER foi mesclado automaticamente com sucesso!"
             "text": "PR #$PR_NUMBER foi mesclado automaticamente com sucesso!"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -75,9 +73,9 @@ jobs:
           curl -X POST -H 'Content-type: application/json' --data '{
             "text": "Ocorreu um erro ao tentar mesclar o PR #$PR_NUMBER."
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
-<<<<<<< HEAD
-=======
             "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
             "text": "Ocorreu um erro ao tentar mesclar o PR #$PR_NUMBER."
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
->>>>>>> origin/master
+            "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
+            "text": "Ocorreu um erro ao tentar mesclar o PR #$PR_NUMBER."
+          }' ${{ secrets.SLACK_WEBHOOK_URL }}
