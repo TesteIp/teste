@@ -33,6 +33,7 @@ jobs:
             --body "Sincronizando as correções da master para dev.")
           PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
@@ -47,5 +48,5 @@ jobs:
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }} \n*Link:* #${{ env.PR_URL }}"
+            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }} \n*Link:* ${{ env.PR_URL }}"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
