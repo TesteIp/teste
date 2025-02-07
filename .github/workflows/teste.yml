@@ -44,11 +44,11 @@ jobs:
         if: env.PR_NUMBER != ''
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "PR #$PR_NUMBER foi mesclado automaticamente com sucesso!"
+            "text": "PR $PR_NUMBER foi mesclado automaticamente com sucesso!"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
       - name: Notificar no Slack (Erro)
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Ocorreu um erro ao tentar mesclar o PR #$PR_NUMBER."
+            "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
