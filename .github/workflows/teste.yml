@@ -1,9 +1,10 @@
 name: Merge Back Hotfix
 
 on:
-  push:
+  pull_request:
+    types: [closed]         
     branches:
-      - master 
+      - master              
 
 permissions:
   contents: write
@@ -11,6 +12,7 @@ permissions:
 
 jobs:
   merge-back:
+    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'hotfix/') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -27,7 +29,7 @@ jobs:
           PR_URL=$(gh pr create \
             --base dev \
             --head master \
-            --title " Merge back hotfix para dev" \
+            --title "Merge back hotfix para dev" \
             --body "Sincronizando as correções da master para dev.")
           PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
