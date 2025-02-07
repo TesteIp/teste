@@ -3,7 +3,7 @@ name: Merge Back Hotfix
 on:
   push:
     branches:
-      - master 
+      - master
 
 permissions:
   contents: write
@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   merge-back:
+    if: ${{ github.event.head_commit.message == 'Merge branch hotfix' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
