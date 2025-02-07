@@ -30,7 +30,6 @@ jobs:
             --title "🔄 Merge back hotfix para dev" \
             --body "Sincronizando as correções da master para dev.")
           PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
-          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
@@ -43,15 +42,15 @@ jobs:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: Notificar no Slack (Sucesso)
-        if: success()
+        if: env.PR_NUMBER != ''
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "PR #${{ env.PR_NUMBER }} foi mesclado automaticamente com sucesso!"
+            "text": "PR $PR_NUMBER foi mesclado automaticamente com sucesso!"
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Notificar no Slack (Erro)
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Ocorreu um erro ao tentar mesclar o PR #${{ env.PR_NUMBER }}."
+            "text": "Ocorreu um erro ao tentar mesclar o PR $PR_NUMBER."
           }' ${{ secrets.SLACK_WEBHOOK_URL }}
