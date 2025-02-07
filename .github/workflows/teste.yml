@@ -3,7 +3,7 @@ name: Merge Back Hotfix
 on:
   push:
     branches:
-      - master 
+      - master
 
 permissions:
   contents: write
